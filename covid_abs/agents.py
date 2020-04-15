@@ -36,3 +36,6 @@ class Agent(object):
 
   def __str__(self):
     return str(self.status.name)
+
+  def get_summary(self):
+    return '{} yo, {} class, {} $: {}'.format(self.age, self.social_stratum, self.wealth, self.status.name)

@@ -7,7 +7,6 @@ from covid_abs.agents import *
 from covid_abs.abs import *
 
 from matplotlib import animation, rc
-from IPython.display import HTML
 
 legend_ecom = {'Q1': 'Most Poor', 'Q2': 'Poor', 'Q3': 'Working Class', 'Q4': 'Rich', 'Q5': 'Most Rich'}
 
@@ -137,7 +136,6 @@ def execute_simulation(sim, **kwargs):
     statistics = {'info': [], 'ecom': []}
 
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=[20, 5])
-    # plt.close()
 
     frames = kwargs.get('iterations', 100)
     iteration_time = kwargs.get('iteration_time', 250)
@@ -187,7 +185,6 @@ def execute_simulation(sim, **kwargs):
     lgd = ax[2].legend(handles, labels, loc='top right') #2, bbox_to_anchor=(1, 1))
 
     animate = lambda i: update(sim, scat, linhas1, linhas2, statistics)
-
     init = lambda: clear(scat, linhas1, linhas2)
 
     # animation function. This is called sequentially

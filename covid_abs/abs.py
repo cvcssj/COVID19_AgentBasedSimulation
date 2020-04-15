@@ -129,17 +129,19 @@ class Simulation(object):
                 if age_severe_probs[indice] > teste_sub:
                     agent.infected_status = InfectionSeverity.Severe
                     self.get_statistics()
-                    if self.statistics['Severe'] + self.statistics['Hospitalization'] >= self.critical_limit:
-                        agent.status = Status.Death
+                    total_that_should_be_in_hospital = self.statistics['Severe'] + self.statistics['Hospitalization']
+                    if total_that_should_be_in_hospital >= self.critical_limit:
+                        agent.status = Status.Death  # dye because there is no place in the hospitals
                         agent.infected_status = InfectionSeverity.Asymptomatic
 
-            death_test = np.random.random()
-            if age_death_probs[indice] > death_test:
-                agent.status = Status.Death
-                agent.infected_status = InfectionSeverity.Asymptomatic
-                return
+            if agent.status.name == Status.Infected:
+                death_test = np.random.random()
+                if age_death_probs[indice] > death_test:
+                    agent.status = Status.Death
+                    agent.infected_status = InfectionSeverity.Asymptomatic
+                    return
 
-            if agent.infected_time > 20:
+            if agent.infected_time > virus_in_body_until_recovered:
                 agent.infected_time = 0
                 agent.status = Status.Recovered_Immune
                 agent.infected_status = InfectionSeverity.Asymptomatic

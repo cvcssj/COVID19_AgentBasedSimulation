@@ -18,14 +18,13 @@ age_death_probs = [0.0000161, 0.0000695, 0.000309, 0.000844, 0.00161, 0.00595, 0
 # number of time iterations (e.g days) after which you're recovered from the virus (given that you took it before)
 virus_in_body_until_recovered = 21
 
-## Citar fontes
-
 """
 Wealth distribution - Lorenz Curve
 
-By quintile, source: https://www.worldbank.org/en/topic/poverty/lac-equity-lab1/income-inequality/composition-by-quintile
+By quintile, source:
+https://www.worldbank.org/en/topic/poverty/lac-equity-lab1/income-inequality/composition-by-quintile
 """
 
 lorenz_curve = [.04, .08, .13, .2, .56]
 share = np.min(lorenz_curve)
-basic_income = np.array(lorenz_curve)/share
+basic_income = np.array(lorenz_curve) / share

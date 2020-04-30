@@ -1,4 +1,3 @@
-import numpy as np
 from covid_abs.agents import Status, InfectionSeverity, Agent
 from covid_abs.common import *
 
@@ -50,15 +49,15 @@ class Simulation(object):
 
     def initialize(self):
         # Initial infected population
-        for i in np.arange(0, int(self.population_size * self.initial_infected_perc)):
+        for _ in np.arange(0, int(self.population_size * self.initial_infected_perc)):
             self.create_agent(Status.Infected)
 
         # Initial immune population
-        for i in np.arange(0, int(self.population_size * self.initial_immune_perc)):
+        for _ in np.arange(0, int(self.population_size * self.initial_immune_perc)):
             self.create_agent(Status.Recovered_Immune)
 
         # Initial susceptible population
-        for i in np.arange(0, self.population_size - len(self.population)):
+        for _ in np.arange(0, self.population_size - len(self.population)):
             self.create_agent(Status.Susceptible)
 
         # Share the common wealth of 10^4 among the population, according each agent social stratum
@@ -82,10 +81,10 @@ class Simulation(object):
                 agent1.status = Status.Infected
 
     def move(self, agent, triggers=[]):
-
-        if agent.status == Status.Death or (agent.status == Status.Infected \
-                                            and (agent.infected_status == InfectionSeverity.Hospitalization \
-                                                 or agent.infected_status == InfectionSeverity.Severe)):
+        is_dead = agent.status == Status.Death
+        is_infected = agent.status == Status.Infected
+        is_hospitalized = agent.infected_status == InfectionSeverity.Hospitalization or agent.infected_status == InfectionSeverity.Severe
+        if is_dead or (is_infected and is_hospitalized):
             return
 
         for trigger in triggers:
@@ -151,7 +150,8 @@ class Simulation(object):
     def execute(self):
         mov_triggers = [k for k in self.triggers_population if k['attribute'] == 'move']
         con_triggers = [k for k in self.triggers_population if k['attribute'] == 'contact']
-        other_triggers = [k for k in self.triggers_population if k['attribute'] != 'move' and k['attribute'] != 'contact']
+        other_triggers = [k for k in self.triggers_population if
+                          k['attribute'] != 'move' and k['attribute'] != 'contact']
 
         for agent in self.population:
             self.move(agent, triggers=mov_triggers)
@@ -161,8 +161,6 @@ class Simulation(object):
                 if trigger['condition'](agent):
                     attr = trigger['attribute']
                     agent.__dict__[attr] = trigger['action'](agent.__dict__[attr])
-
-        dist = np.zeros((self.population_size, self.population_size))
 
         contacts = []
 
@@ -230,9 +228,9 @@ class Simulation(object):
 class MultiPopulationSimulation(Simulation):
     def __init__(self, **kwargs):
         super(MultiPopulationSimulation, self).__init__(**kwargs)
-        self.simulations = kwargs.get('simulations',[])
-        self.positions = kwargs.get('positions',[])
-        self.total_population = kwargs.get('total_population',0)
+        self.simulations = kwargs.get('simulations', [])
+        self.positions = kwargs.get('positions', [])
+        self.total_population = kwargs.get('total_population', 0)
 
     def get_population(self):
         population = []
@@ -294,13 +292,13 @@ class MultiPopulationSimulation(Simulation):
             for status in Status:
                 for simulation in self.simulations:
                     self.statistics[status.name] = np.sum(
-                        [1 for a in filter(lambda x: x.status == status, simulation.get_population())])
+                        [1 for _ in filter(lambda x: x.status == status, simulation.get_population())])
                 self.statistics[status.name] /= self.total_population
 
             for infected_status in InfectionSeverity:
                 for simulation in self.simulations:
                     self.statistics[infected_status.name] = np.sum(
-                        [1 for a in filter(lambda x: x.infected_status == infected_status and x.status != Status.Death,
+                        [1 for _ in filter(lambda x: x.infected_status == infected_status and x.status != Status.Death,
                                            simulation.get_population())])
                 self.statistics[infected_status.name] /= self.total_population
 

@@ -1,6 +1,4 @@
-from covid_abs.abs import *
 from covid_abs.graphics import *
-from matplotlib import pyplot as plt
 
 sim = Simulation(
     length=100,  # mobility length (how much a particle can move x-wise)
@@ -8,7 +6,7 @@ sim = Simulation(
     initial_infected_perc=0.02,  # ratio of infected in initial population
     population_size=200,
     contagion_distance=5,  # minimal distance between agents for contagion
-    critical_limit=5/100,  # maximum ratio of population which Healthcare System can handle simutaneously
+    critical_limit=5 / 100,  # maximum ratio of population which Healthcare System can handle simutaneously
     amplitudes={  # mobility ranges for agents, by Status
         Status.Susceptible: 5,
         Status.Recovered_Immune: 5,

@@ -1,12 +1,8 @@
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
+from matplotlib import animation
 
-from covid_abs.common import *
-from covid_abs.agents import *
 from covid_abs.abs import *
-
-from matplotlib import animation, rc
 
 legend_ecom = {'Q1': 'Most Poor', 'Q2': 'Poor', 'Q3': 'Working Class', 'Q4': 'Rich', 'Q5': 'Most Rich'}
 
@@ -58,7 +54,6 @@ def color3(a):
 
 
 def update_statistics(sim, statistics):
-
     stats1 = sim.get_statistics(kind='info')
     statistics['info'].append(stats1)
     df1 = pd.DataFrame(statistics['info'], columns=[k for k in stats1.keys()])
@@ -67,7 +62,7 @@ def update_statistics(sim, statistics):
     statistics['ecom'].append(stats2)
     df2 = pd.DataFrame(statistics['ecom'], columns=[k for k in stats2.keys()])
 
-    return (df1, df2)
+    return df1, df2
 
 
 def clear(scat, linhas1, linhas2):
@@ -168,7 +163,7 @@ def execute_simulation(sim, **kwargs):
     ax[1].set_ylabel("% of Population")
 
     handles, labels = ax[1].get_legend_handles_labels()
-    lgd = ax[1].legend(handles, labels, loc='top right') #2, bbox_to_anchor=(0, 0))
+    ax[1].legend(handles, labels, loc='upper right')  # 2, bbox_to_anchor=(0, 0))
 
     linhas2 = {}
 
@@ -182,10 +177,13 @@ def execute_simulation(sim, **kwargs):
     ax[2].set_ylabel("Wealth")
 
     handles, labels = ax[2].get_legend_handles_labels()
-    lgd = ax[2].legend(handles, labels, loc='top right') #2, bbox_to_anchor=(1, 1))
+    ax[2].legend(handles, labels, loc='upper right')  # 2, bbox_to_anchor=(1, 1))
 
-    animate = lambda i: update(sim, scat, linhas1, linhas2, statistics)
-    init = lambda: clear(scat, linhas1, linhas2)
+    def animate(i):
+        return update(sim, scat, linhas1, linhas2, statistics)
+
+    def init():
+        return clear(scat, linhas1, linhas2)
 
     # animation function. This is called sequentially
     anim = animation.FuncAnimation(fig, animate, init_func=init, frames=frames, interval=iteration_time, blit=True)
@@ -195,5 +193,3 @@ def execute_simulation(sim, **kwargs):
 
 def save_gif(anim, file):
     anim.save(file, writer='imagemagick', fps=60)
-
-

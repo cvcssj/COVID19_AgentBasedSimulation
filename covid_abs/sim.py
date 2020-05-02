@@ -1,8 +1,7 @@
 import numpy as np
 
-from .agents import Status, InfectionSeverity, Agent
-from .data import PROB_HOSP, PROB_DIE, PROB_HOSP_ICU, N_VIRUS_RECOVERY, \
-    BASIC_INCOME, LORENZ_CURVE
+from .agents import Status, InfectionSeverity, Agent, Position
+from .data import LORENZ_CURVE
 
 
 class Simulation(object):
@@ -26,29 +25,26 @@ class Simulation(object):
         self.triggers_simulation = kwargs.get("triggers_simulation", [])
         self.triggers_population = kwargs.get("triggers_population", [])
 
-    def get_population(self):
-        return self.population
-
-    def set_population(self, pop):
-        self.population = pop
-
-    def set_amplitudes(self, amp):
-        self.amplitudes = amp
-
     def append_trigger_simulation(self, condition, attribute, action):
         self.triggers_simulation.append({'condition': condition, 'attribute': attribute, 'action': action})
 
     def append_trigger_population(self, condition, attribute, action):
         self.triggers_population.append({'condition': condition, 'attribute': attribute, 'action': action})
 
-    def create_agent(self, status):
+    def _random_position(self):
         x = np.clip(int(self.length / 2 + (np.random.randn(1) * (self.length / 3))),
                     0, self.length)
         y = np.clip(int(self.height / 2 + (np.random.randn(1) * (self.height / 3))),
                     0, self.height)
-        age = int(np.random.beta(2, 5, 1) * 100)
-        social_stratum = int(np.random.rand(1) * 100 // 20)
-        self.population.append(Agent(x=x, y=y, age=age, status=status, social_stratum=social_stratum))
+        return Position(x, y)
+
+    def _random_agent(self, status, position=None):
+        if position is None:
+            position = self._random_position()
+        return Agent.create_random(position, status)
+
+    def create_agent(self, status, position=None):
+        self.population.append(self._random_agent(status, position))
 
     def initialize(self):
         # Initial infected population
@@ -87,74 +83,13 @@ class Simulation(object):
                 agent1.status = Status.Infected
 
     def move(self, agent, triggers=None):
-        if triggers is None:
-            triggers = []
-
-        is_dead = agent.status == Status.Death
-        is_infected = agent.status == Status.Infected
-        is_hospitalized = agent.infected_status == InfectionSeverity.Hospitalization or agent.infected_status == InfectionSeverity.Severe
-        if is_dead or (is_infected and is_hospitalized):
-            return
-
-        for trigger in triggers:
-            if trigger['condition'](agent):
-                agent.x, agent.y = trigger['action'](agent)
-                return
-
-        ix = int(np.random.randn(1) * self.amplitudes[agent.status])
-        iy = int(np.random.randn(1) * self.amplitudes[agent.status])
-
-        if (agent.x + ix) <= 0 or (agent.x + ix) >= self.length:
-            agent.x -= ix
-        else:
-            agent.x += ix
-
-        if (agent.y + iy) <= 0 or (agent.y + iy) >= self.height:
-            agent.y -= iy
-        else:
-            agent.y += iy
-
-        dist = np.sqrt(ix ** 2 + iy ** 2)
-        result_ecom = np.random.rand(1)
-        agent.wealth += dist * result_ecom * self.minimum_expense * BASIC_INCOME[agent.social_stratum]
+        agent.move(self.length, self.height, self.amplitudes, self.minimum_expense, triggers)
 
     def update(self, agent):
-
-        if agent.status == Status.Death:
-            return
-
-        if agent.status == Status.Infected:
-            agent.infected_time += 1
-
-            indice = agent.age // 10 - 1 if agent.age > 10 else 0
-
-            teste_sub = np.random.random()
-
-            if agent.infected_status == InfectionSeverity.Asymptomatic:
-                if PROB_HOSP[indice] > teste_sub:
-                    agent.infected_status = InfectionSeverity.Hospitalization
-            elif agent.infected_status == InfectionSeverity.Hospitalization:
-                if PROB_HOSP_ICU[indice] > teste_sub:
-                    agent.infected_status = InfectionSeverity.Severe
-                    self.get_statistics()
-                    total_that_should_be_in_hospital = self.statistics['Severe'] + self.statistics['Hospitalization']
-                    if total_that_should_be_in_hospital >= self.critical_limit:
-                        agent.status = Status.Death  # dye because there is no place in the hospitals
-                        agent.infected_status = InfectionSeverity.Asymptomatic
-
-            if agent.status.name == Status.Infected:
-                death_test = np.random.random()
-                if PROB_DIE[indice] > death_test:
-                    agent.status = Status.Death
-                    agent.infected_status = InfectionSeverity.Asymptomatic
-                    return
-
-            if agent.infected_time > N_VIRUS_RECOVERY:
-                agent.infected_time = 0
-                agent.status = Status.Recovered_Immune
-                agent.infected_status = InfectionSeverity.Asymptomatic
-
-        agent.wealth -= self.minimum_expense * BASIC_INCOME[agent.social_stratum]
+        self.get_statistics()
+        total_in_hospital = self.statistics['Severe'] + self.statistics['Hospitalization']
+        are_there_places_in_hospital = total_in_hospital < self.critical_limit
+        agent.update(are_there_places_in_hospital, self.minimum_expense)
 
     def execute(self):
         mov_triggers = [k for k in self.triggers_population if k['attribute'] == 'move']
@@ -177,8 +112,9 @@ class Simulation(object):
             for j in np.arange(i + 1, self.population_size):
                 ai = self.population[i]
                 aj = self.population[j]
+                too_near = ai.distance(aj) <= self.contagion_distance
 
-                if np.sqrt((ai.x - aj.x) ** 2 + (ai.y - aj.y) ** 2) <= self.contagion_distance:
+                if too_near:
                     contacts.append((i, j))
 
         for par in contacts:
@@ -197,12 +133,6 @@ class Simulation(object):
 
     def get_positions(self):
         return [[a.x, a.y] for a in self.population]
-
-    def get_description(self, complete=False):
-        if complete:
-            return [a.get_description() for a in self.population]
-        else:
-            return [a.status.name for a in self.population]
 
     def get_statistics(self, kind='info'):
         if self.statistics is None:
@@ -229,6 +159,3 @@ class Simulation(object):
             return {k: v for k, v in self.statistics.items() if k.startswith('Q')}
         else:
             return self.statistics
-
-    def __str__(self):
-        return str(self.get_description())

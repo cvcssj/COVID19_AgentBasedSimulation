@@ -5,7 +5,7 @@ from .agents import Status, InfectionSeverity
 
 
 def get_color_virus_status(s):
-    if s == Status.Proteced.name:
+    if s == Status.Protected.name:
         return 'pink'
     elif s == Status.Susceptible.name:
         return 'blue'
@@ -75,7 +75,7 @@ def plot_simulation(sim, iterations):
     ax[0].set_xlim((0, iterations))
     ax[0].set_xlabel("days")
     ax[0].set_ylabel("% of population")
-    ax[0].axhline(y=sim.critical_limit, c="black", ls='--', label='Hospitalization limit')
+    ax[0].axhline(y=sim.hospitalization_limit, c="black", ls='--', label='Hospitalization limit')
 
     # setup static second plot
     ax[1].set_xlim((0, iterations))

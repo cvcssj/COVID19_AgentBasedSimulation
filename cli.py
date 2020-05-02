@@ -4,13 +4,20 @@ from covid_abs.sim import Simulation
 
 
 def main():
-    sim = Simulation(
-        length=100,  # mobility length (how much a particle can move x-wise)
-        height=100,  # mobility height (how much a particle can move y-\wise)
-        initial_infected_perc=0.02,  # ratio of infected in initial population
+    initial_population = {
+        Status.Protected: 20,
+        Status.Exposed: 10,
+        Status.Infected: 20,
+        Status.Confirmed: 10,
+        Status.Recovered: 0,
+        Status.Dead: 0
+    }  # in percentage
+
+    simulation = Simulation(
+        initial_population,
         population_size=200,
         contagion_distance=5,  # minimal distance between agents for contagion
-        critical_limit=5 / 100,  # maximum ratio of population which Healthcare System can handle simutaneously
+        hospitalization_limit=0.05,  # maximum ratio of population which Healthcare System can handle simutaneously
         amplitudes={  # mobility ranges for agents, by Status
             Status.Susceptible: 5,
             Status.Recovered: 5,
@@ -18,18 +25,18 @@ def main():
         }
     )
 
-    sim.append_trigger_population(
+    simulation.append_trigger_population(
         lambda a: a.age >= 60,
         'move',
         lambda a: Position(a.position.x, a.position.y)
     )  # 60+ stay at home
-    sim.append_trigger_population(
+    simulation.append_trigger_population(
         lambda agent1, agent2: agent1.age >= 60,
         'contact',
         lambda a: Status.Recovered
     )  # no contact between 60+ people and others
 
-    plot_simulation(sim, iterations=50)
+    plot_simulation(simulation, iterations=50)
 
 
 if __name__ == '__main__':

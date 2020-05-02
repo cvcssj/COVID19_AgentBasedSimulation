@@ -1,5 +1,8 @@
-from covid_abs.agents import Status, InfectionSeverity, Agent
-from covid_abs.common import *
+import numpy as np
+
+from .agents import Status, InfectionSeverity, Agent
+from .common import age_hospitalization_probs, age_death_probs, age_severe_probs, virus_in_body_until_recovered, \
+    basic_income, lorenz_curve
 
 
 class Simulation(object):

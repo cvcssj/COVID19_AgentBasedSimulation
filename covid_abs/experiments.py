@@ -1,8 +1,9 @@
-from covid_abs.abs import *
-from covid_abs.graphics import color1, legend_ecom
-
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+
+from .abs import Simulation
+from .graphics import color1, legend_ecom
 
 
 def plot_mean_std(ax, mean, std, legend, color=None):

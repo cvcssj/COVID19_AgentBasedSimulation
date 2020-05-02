@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib import animation
 
-from covid_abs.abs import *
+from .agents import Status, InfectionSeverity
 
 legend_ecom = {'Q1': 'Most Poor', 'Q2': 'Poor', 'Q3': 'Working Class', 'Q4': 'Rich', 'Q5': 'Most Rich'}
 
@@ -88,7 +87,7 @@ def clear(scat, linhas1, linhas2):
     return tuple(ret)
 
 
-def update(sim, scat, linhas1, linhas2, statistics):
+def update(sim, linhas1, linhas2, statistics):
     """
     Execute an iteration of the simulation and update the animation graphics
 
@@ -99,9 +98,8 @@ def update(sim, scat, linhas1, linhas2, statistics):
     :param statistics:
     :return:
     """
+
     sim.execute()
-    scat.set_facecolor([color2(a) for a in sim.get_population()])
-    scat.set_offsets(sim.get_positions())
 
     df1, df2 = update_statistics(sim, statistics)
 
@@ -111,84 +109,49 @@ def update(sim, scat, linhas1, linhas2, statistics):
     for col in linhas2.keys():
         linhas2[col].set_data(df2.index.values, df2[col].values)
 
-    ret = [scat]
-    for l in linhas1.values():
-        ret.append(l)
-    for l in linhas2.values():
-        ret.append(l)
 
-    return tuple(ret)
+def plot_simulation(sim, iterations):
+    fig, ax = plt.subplots(nrows=2, ncols=1)
 
+    # setup static first plot
+    ax[0].set_title('Contagion Evolution')
+    ax[0].set_xlim((0, iterations))
+    ax[0].set_xlabel("days")
+    ax[0].set_ylabel("% of population")
+    ax[0].axhline(y=sim.critical_limit, c="black", ls='--', label='Critical limit')
 
-def execute_simulation(sim, **kwargs):
-    """
+    # setup static second plot
+    ax[1].set_title('Economical impact')
+    ax[1].set_xlim((0, iterations))
+    ax[1].set_xlabel("days")
+    ax[1].set_ylabel("wealth")
 
-    :param sim: a Simulation or MultiopulationSimulation object
-    :param iterations: number of interations of the simulation
-    :param  iteration_time: time (in miliseconds) between each iteration
-    :return: an animation object
-    """
     statistics = {'info': [], 'ecom': []}
-
-    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=[20, 5])
-
-    frames = kwargs.get('iterations', 100)
-    iteration_time = kwargs.get('iteration_time', 250)
-
     sim.initialize()
-
-    ax[0].set_title('Simulation Environment')
-    ax[0].set_xlim((0, sim.length))
-    ax[0].set_ylim((0, sim.height))
-
-    pos = np.array(sim.get_positions())
-
-    scat = ax[0].scatter(pos[:, 0], pos[:, 1],
-                         c=[color2(a) for a in sim.get_population()])
-
     df1, df2 = update_statistics(sim, statistics)
 
-    ax[1].set_title('Contagion Evolution')
-    ax[1].set_xlim((0, frames))
-
+    # setup dynamic first plot
     linhas1 = {}
-
-    ax[1].axhline(y=sim.critical_limit, c="black", ls='--', label='Critical limit')
-
     for col in df1.columns.values:
         if col != 'Asymptomatic':
-            linhas1[col], = ax[1].plot(df1.index.values, df1[col].values, c=color1(col), label=col)
+            linhas1[col], = ax[0].plot(df1.index.values, df1[col].values, c=color1(col), label=col)
 
-    ax[1].set_xlabel("Nº of Days")
-    ax[1].set_ylabel("% of Population")
+    handles, labels = ax[0].get_legend_handles_labels()
+    ax[0].legend(handles, labels, loc='upper right')  # 2, bbox_to_anchor=(0, 0))
 
-    handles, labels = ax[1].get_legend_handles_labels()
-    ax[1].legend(handles, labels, loc='upper right')  # 2, bbox_to_anchor=(0, 0))
-
+    # setup dynamic second plot
     linhas2 = {}
-
-    ax[2].set_title('Economical Impact')
-    ax[2].set_xlim((0, frames))
-
     for col in df2.columns.values:
-        linhas2[col], = ax[2].plot(df2.index.values, df2[col].values, c=color3(col), label=legend_ecom[col])
+        linhas2[col], = ax[1].plot(df2.index.values, df2[col].values, c=color3(col), label=legend_ecom[col])
+    handles, labels = ax[1].get_legend_handles_labels()
+    ax[1].legend(handles, labels, loc='upper right')  # 2, bbox_to_anchor=(1, 1))
 
-    ax[2].set_xlabel("Nº of Days")
-    ax[2].set_ylabel("Wealth")
+    # simulate and update plots
+    for _ in range(iterations):
+        update(sim, linhas1, linhas2, statistics)
 
-    handles, labels = ax[2].get_legend_handles_labels()
-    ax[2].legend(handles, labels, loc='upper right')  # 2, bbox_to_anchor=(1, 1))
-
-    def animate(i):
-        return update(sim, scat, linhas1, linhas2, statistics)
-
-    def init():
-        return clear(scat, linhas1, linhas2)
-
-    # animation function. This is called sequentially
-    anim = animation.FuncAnimation(fig, animate, init_func=init, frames=frames, interval=iteration_time, blit=True)
-
-    return anim
+    # show
+    plt.show()
 
 
 def save_gif(anim, file):

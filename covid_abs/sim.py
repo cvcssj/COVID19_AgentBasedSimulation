@@ -8,25 +8,27 @@ class Simulation(object):
     def __init__(self, **kwargs):
         self.population = []
         self.population_size = kwargs.get("population_size", 20)
+
         self.length = kwargs.get("length", 10)
         self.height = kwargs.get("height", 10)
+
         self.initial_infected_perc = kwargs.get("initial_infected_perc", 0.05)
         self.initial_immune_perc = kwargs.get("initial_immune_perc", 0.05)
         self.contagion_distance = kwargs.get("contagion_distance", 1.)
         self.contagion_rate = kwargs.get("contagion_rate", 0.9)
         self.critical_limit = kwargs.get("critical_limit", 0.6)
-        self.amplitudes = kwargs.get('amplitudes',
-                                     {Status.Susceptible: 5,
-                                      Status.Recovered_Immune: 5,
-                                      Status.Infected: 5})
+
+        self.amplitudes = kwargs.get('amplitudes', {
+            Status.Susceptible: 5,
+            Status.Recovered_Immune: 5,
+            Status.Infected: 5
+        })
+
         self.minimum_income = kwargs.get("minimum_income", 1.0)
         self.minimum_expense = kwargs.get("minimum_expense", 1.0)
-        self.statistics = None
-        self.triggers_simulation = kwargs.get("triggers_simulation", [])
-        self.triggers_population = kwargs.get("triggers_population", [])
 
-    def append_trigger_simulation(self, condition, attribute, action):
-        self.triggers_simulation.append({'condition': condition, 'attribute': attribute, 'action': action})
+        self.statistics = None
+        self.triggers_population = []
 
     def append_trigger_population(self, condition, attribute, action):
         self.triggers_population.append({'condition': condition, 'attribute': attribute, 'action': action})
@@ -122,12 +124,6 @@ class Simulation(object):
             aj = self.population[par[1]]
             self.contact(ai, aj, triggers=con_triggers)
             self.contact(aj, ai, triggers=con_triggers)
-
-        if len(self.triggers_simulation) > 0:
-            for trigger in self.triggers_simulation:
-                if trigger['condition'](self):
-                    attr = trigger['attribute']
-                    self.__dict__[attr] = trigger['action'](self.__dict__[attr])
 
         self.statistics = None
 

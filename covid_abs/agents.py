@@ -2,13 +2,13 @@ from enum import Enum
 
 
 class Status(Enum):
-    """
-    Agent status, following the SIR model
-    """
-    Susceptible = 's'
-    Infected = 'i'
-    Recovered_Immune = 'c'
-    Death = 'm'
+    Proteced = 'P'
+    Susceptible = 'S'
+    Exposed = 'E'
+    Infected = 'Ia'
+    Confirmed = 'Iq'
+    Recovered_Immune = 'R'
+    Death = 'D'
 
 
 class InfectionSeverity(Enum):

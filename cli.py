@@ -1,6 +1,6 @@
-from covid_abs.abs import Simulation
 from covid_abs.agents import Status
 from covid_abs.graphics import plot_simulation
+from covid_abs.sim import Simulation
 
 
 def main():

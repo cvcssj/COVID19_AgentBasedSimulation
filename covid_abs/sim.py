@@ -44,7 +44,7 @@ class Simulation(object):
             position = self._random_position()
         return Agent.create_random(position, status)
 
-    def create_agent(self, status, position=None):
+    def _create_agent(self, status, position=None):
         self.population.append(self._random_agent(status, position))
 
     def create_agents(self, status, n, positions=None):
@@ -55,10 +55,10 @@ class Simulation(object):
             self.population.append(self._random_agent(status, positions[i]))
 
     def init(self):
-        self.init_population()
-        self.init_wealth()
+        self._init_population()
+        self._init_wealth()
 
-    def init_population(self):
+    def _init_population(self):
         n = int(self.population_size * self.initial_infected_perc)
         self.create_agents(Status.Infected, n)
 
@@ -68,7 +68,7 @@ class Simulation(object):
         n = self.population_size - len(self.population)  # the rest
         self.create_agents(Status.Susceptible, n)
 
-    def init_wealth(self, wealth=1e4):
+    def _init_wealth(self, wealth=1e4):
         for i, quintil in enumerate(LORENZ_CURVE):  # share common wealth
             total = quintil * wealth
             agent_in_quintil = list(filter(lambda x: x.social_stratum == i and x.is_adult(), self.population))
@@ -79,15 +79,12 @@ class Simulation(object):
             for agent in agent_in_quintil:
                 agent.wealth = share
 
-    def interact(self, agent1, agent2, triggers=None):
-        agent1.interact(agent2, self.contagion_rate, triggers)
-
     def update_status(self):
         self.get_statistics()
         total_in_hospital = self.statistics['Severe'] + self.statistics['Hospitalization']
         self.are_there_places_in_hospital = total_in_hospital < self.critical_limit
 
-    def get_interactions(self):
+    def _get_interactions(self):
         for i in np.arange(0, self.population_size):
             for j in np.arange(i + 1, self.population_size):
                 ai = self.population[i]
@@ -95,27 +92,27 @@ class Simulation(object):
                 if ai.will_make_contact(aj, self.contagion_distance):
                     yield (ai, aj)
 
-    def execute_move(self):
+    def _execute_move(self):
         triggers = [k for k in self.triggers_population if k['attribute'] == 'move']
         for agent in self.population:
             agent.move(self.length, self.height, self.amplitudes, self.minimum_expense, triggers)
             self.update_status()  # for each move -> update status
             agent.update(self.are_there_places_in_hospital, self.minimum_expense)
 
-    def execute_interactions(self):
-        interactions = list(self.get_interactions())
+    def _execute_interactions(self):
+        interactions = list(self._get_interactions())
         triggers = [k for k in self.triggers_population if k['attribute'] == 'contact']
         for (ai, aj) in interactions:
-            self.interact(ai, aj, triggers=triggers)
-            self.interact(aj, ai, triggers=triggers)
+            ai.interact(aj, self.contagion_rate, triggers)
+            aj.interact(ai, self.contagion_rate, triggers)
 
-    def reset_statistics(self):
+    def _reset_statistics(self):
         self.statistics = None
 
     def execute(self):
-        self.execute_move()
-        self.execute_interactions()
-        self.reset_statistics()
+        self._execute_move()
+        self._execute_interactions()
+        self._reset_statistics()
 
     def _get_agents(self, filter_by):
         return list(filter(filter_by, self.population))
@@ -136,18 +133,18 @@ class Simulation(object):
                 wealth = sum([a.wealth for a in such_agents])
                 self.statistics['Q{}'.format(q + 1)] = wealth
 
-        return self.get_stats(kind)
+        return self._get_stats(kind)
 
-    def get_virus_stats(self):
+    def _get_virus_stats(self):
         return {k: v for k, v in self.statistics.items() if not k.startswith('Q')}
 
-    def get_wealth_stats(self):
+    def _get_wealth_stats(self):
         return {k: v for k, v in self.statistics.items() if k.startswith('Q')}
 
-    def get_stats(self, kind):
+    def _get_stats(self, kind):
         if kind == 'info':
-            return self.get_virus_stats()
+            return self._get_virus_stats()
         elif kind == 'ecom':
-            return self.get_wealth_stats()
+            return self._get_wealth_stats()
 
         return self.statistics

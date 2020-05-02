@@ -114,6 +114,9 @@ class Agent(object):
     def get_summary(self):
         return '{} yo, {} class, {} $: {}'.format(self.age, self.social_stratum, self.wealth, self.status.name)
 
+    def is_adult(self):
+        return self.age >= 18
+
     def __str__(self):
         return str(self.status.name)
 

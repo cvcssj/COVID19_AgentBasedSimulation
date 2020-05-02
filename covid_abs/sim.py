@@ -34,10 +34,8 @@ class Simulation(object):
         self.triggers_population.append({'condition': condition, 'attribute': attribute, 'action': action})
 
     def _random_position(self):
-        x = np.clip(int(self.length / 2 + (np.random.randn(1) * (self.length / 3))),
-                    0, self.length)
-        y = np.clip(int(self.height / 2 + (np.random.randn(1) * (self.height / 3))),
-                    0, self.height)
+        x = np.random.uniform(0, self.length)
+        y = np.random.uniform(0, self.height)
         return Position(x, y)
 
     def _random_agent(self, status, position=None):
@@ -48,26 +46,37 @@ class Simulation(object):
     def create_agent(self, status, position=None):
         self.population.append(self._random_agent(status, position))
 
-    def initialize(self):
-        # Initial infected population
-        for _ in np.arange(0, int(self.population_size * self.initial_infected_perc)):
-            self.create_agent(Status.Infected)
+    def create_agents(self, status, n, positions=None):
+        if positions is None:
+            positions = [None for _ in range(n)]
 
-        # Initial immune population
-        for _ in np.arange(0, int(self.population_size * self.initial_immune_perc)):
-            self.create_agent(Status.Recovered_Immune)
+        for i in range(n):
+            self.population.append(self._random_agent(status, positions[i]))
 
-        # Initial susceptible population
-        for _ in np.arange(0, self.population_size - len(self.population)):
-            self.create_agent(Status.Susceptible)
+    def init(self):
+        self.init_population()
+        self.init_wealth()
 
-        # Share the common wealth of 10^4 among the population, according each agent social stratum
-        wealth = 10 ** 4
-        for quintil in [0, 1, 2, 3, 4]:
-            total = LORENZ_CURVE[quintil] * wealth
-            qty = max(1.0, np.sum([1 for a in self.population if a.social_stratum == quintil and a.age >= 18]))
+    def init_population(self):
+        n = int(self.population_size * self.initial_infected_perc)
+        self.create_agents(Status.Infected, n)
+
+        n = int(self.population_size * self.initial_immune_perc)
+        self.create_agents(Status.Recovered_Immune, n)
+
+        n = self.population_size - len(self.population)  # the rest
+        self.create_agents(Status.Susceptible, n)
+
+    def init_wealth(self, wealth=1e4):
+        # share common wealth
+        for i, quintil in enumerate(LORENZ_CURVE):
+            total = quintil * wealth
+            agent_in_quintil = list(filter(lambda x: x.social_stratum == i and x.is_adult(), self.population))
+            total_per_quintil = len(agent_in_quintil)
+
+            qty = max(1.0, total_per_quintil)
             share = total / qty
-            for agent in filter(lambda x: x.social_stratum == quintil and x.age >= 18, self.population):
+            for agent in agent_in_quintil:
                 agent.wealth = share
 
     def contact(self, agent1, agent2, triggers=None):

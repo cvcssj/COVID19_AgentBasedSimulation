@@ -73,7 +73,7 @@ def plot_simulation(sim, iterations):
     ax[1].set_ylabel("wealth")
 
     statistics = {'info': [], 'ecom': []}
-    sim.initialize()
+    sim.init()  # start simulation
     df1, df2 = update_statistics(sim, statistics)
 
     # setup dynamic first plot

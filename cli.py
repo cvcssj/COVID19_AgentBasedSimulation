@@ -15,7 +15,8 @@ def main():
             Status.Susceptible: 5,
             Status.Recovered_Immune: 5,
             Status.Infected: 5
-        })
+        }
+    )
 
     sim.append_trigger_population(
         lambda a: a.age >= 60,

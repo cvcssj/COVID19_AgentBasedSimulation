@@ -13,7 +13,7 @@ def main():
         critical_limit=5 / 100,  # maximum ratio of population which Healthcare System can handle simutaneously
         amplitudes={  # mobility ranges for agents, by Status
             Status.Susceptible: 5,
-            Status.Recovered_Immune: 5,
+            Status.Recovered: 5,
             Status.Infected: 5
         }
     )
@@ -26,7 +26,7 @@ def main():
     sim.append_trigger_population(
         lambda agent1, agent2: agent1.age >= 60,
         'contact',
-        lambda a: Status.Recovered_Immune
+        lambda a: Status.Recovered
     )  # no contact between 60+ people and others
 
     plot_simulation(sim, iterations=50)

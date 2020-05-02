@@ -1,22 +1,33 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from .agents import Status, InfectionSeverity
+
 
 def get_color_virus_status(s):
-    if s == 'Susceptible':
+    if s == Status.Proteced.name:
+        return 'pink'
+    elif s == Status.Susceptible.name:
+        return 'blue'
+    elif s == Status.Exposed.name:
         return 'lightblue'
-    elif s == 'Infected':
+    elif s == Status.Infected.name:
         return 'gray'
-    elif s == 'Recovered_Immune':
-        return 'lightgreen'
-    elif s == 'Death':
-        return 'black'
-    elif s == 'Hospitalization':
-        return 'orange'
-    elif s == 'Severe':
+    elif s == Status.Confirmed.name:
         return 'red'
+    elif s == Status.Recovered.name:
+        return 'green'
+    elif s == Status.Dead.name:
+        return 'black'
 
-    return 'white'
+    if s == InfectionSeverity.Asymptomatic.name:
+        return 'orange'
+    elif s == InfectionSeverity.Hospitalization.name:
+        return 'yellow'
+    elif s == InfectionSeverity.Severe.name:
+        return 'magenta'
+
+    return 'gray'
 
 
 def get_color_wealth_status(a):
@@ -60,14 +71,13 @@ def plot_simulation(sim, iterations):
     fig, ax = plt.subplots(nrows=2, ncols=1)
 
     # setup static first plot
-    ax[0].set_title('Contagion evolution')
+    ax[0].set_title('Epidemic evolution')
     ax[0].set_xlim((0, iterations))
     ax[0].set_xlabel("days")
     ax[0].set_ylabel("% of population")
     ax[0].axhline(y=sim.critical_limit, c="black", ls='--', label='Hospitalization limit')
 
     # setup static second plot
-    ax[1].set_title('Economical impact')
     ax[1].set_xlim((0, iterations))
     ax[1].set_xlabel("days")
     ax[1].set_ylabel("wealth")

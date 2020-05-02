@@ -51,4 +51,5 @@ LORENZ_CURVE = [
     .2,  # 80 %
     .56  # 100 %
 ]
+N_QUINTILS = 5
 BASIC_INCOME = np.array(LORENZ_CURVE) / np.min(LORENZ_CURVE)

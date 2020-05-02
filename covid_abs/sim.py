@@ -1,7 +1,7 @@
 import numpy as np
 
 from .agents import Status, InfectionSeverity, Agent, Position
-from .data import LORENZ_CURVE
+from .data import LORENZ_CURVE, N_QUINTILS
 
 
 class Simulation(object):
@@ -20,7 +20,7 @@ class Simulation(object):
 
         self.amplitudes = kwargs.get('amplitudes', {
             Status.Susceptible: 5,
-            Status.Recovered_Immune: 5,
+            Status.Recovered: 5,
             Status.Infected: 5
         })
 
@@ -28,6 +28,7 @@ class Simulation(object):
         self.minimum_expense = kwargs.get("minimum_expense", 1.0)
 
         self.statistics = None
+        self.are_there_places_in_hospital = True
         self.triggers_population = []
 
     def append_trigger_population(self, condition, attribute, action):
@@ -62,14 +63,13 @@ class Simulation(object):
         self.create_agents(Status.Infected, n)
 
         n = int(self.population_size * self.initial_immune_perc)
-        self.create_agents(Status.Recovered_Immune, n)
+        self.create_agents(Status.Recovered, n)
 
         n = self.population_size - len(self.population)  # the rest
         self.create_agents(Status.Susceptible, n)
 
     def init_wealth(self, wealth=1e4):
-        # share common wealth
-        for i, quintil in enumerate(LORENZ_CURVE):
+        for i, quintil in enumerate(LORENZ_CURVE):  # share common wealth
             total = quintil * wealth
             agent_in_quintil = list(filter(lambda x: x.social_stratum == i and x.is_adult(), self.population))
             total_per_quintil = len(agent_in_quintil)
@@ -79,88 +79,75 @@ class Simulation(object):
             for agent in agent_in_quintil:
                 agent.wealth = share
 
-    def contact(self, agent1, agent2, triggers=None):
-        if triggers is None:
-            triggers = []
+    def interact(self, agent1, agent2, triggers=None):
+        agent1.interact(agent2, self.contagion_rate, triggers)
 
-        for trigger in triggers:
-            if trigger['condition'](agent1, agent2):
-                agent1.status = trigger['action'](agent1)
-                return
-
-        if agent1.status == Status.Susceptible and agent2.status == Status.Infected:
-            test_contagion = np.random.random()
-            if test_contagion <= self.contagion_rate:
-                agent1.status = Status.Infected
-
-    def move(self, agent, triggers=None):
-        agent.move(self.length, self.height, self.amplitudes, self.minimum_expense, triggers)
-
-    def update(self, agent):
+    def update_status(self):
         self.get_statistics()
         total_in_hospital = self.statistics['Severe'] + self.statistics['Hospitalization']
-        are_there_places_in_hospital = total_in_hospital < self.critical_limit
-        agent.update(are_there_places_in_hospital, self.minimum_expense)
+        self.are_there_places_in_hospital = total_in_hospital < self.critical_limit
 
-    def execute(self):
-        mov_triggers = [k for k in self.triggers_population if k['attribute'] == 'move']
-        con_triggers = [k for k in self.triggers_population if k['attribute'] == 'contact']
-        other_triggers = [k for k in self.triggers_population if
-                          k['attribute'] != 'move' and k['attribute'] != 'contact']
-
-        for agent in self.population:
-            self.move(agent, triggers=mov_triggers)
-            self.update(agent)
-
-            for trigger in other_triggers:
-                if trigger['condition'](agent):
-                    attr = trigger['attribute']
-                    agent.__dict__[attr] = trigger['action'](agent.__dict__[attr])
-
-        contacts = []
-
+    def get_interactions(self):
         for i in np.arange(0, self.population_size):
             for j in np.arange(i + 1, self.population_size):
                 ai = self.population[i]
                 aj = self.population[j]
-                too_near = ai.distance(aj) <= self.contagion_distance
+                if ai.will_make_contact(aj, self.contagion_distance):
+                    yield (ai, aj)
 
-                if too_near:
-                    contacts.append((i, j))
+    def execute_move(self):
+        triggers = [k for k in self.triggers_population if k['attribute'] == 'move']
+        for agent in self.population:
+            agent.move(self.length, self.height, self.amplitudes, self.minimum_expense, triggers)
+            self.update_status()  # for each move -> update status
+            agent.update(self.are_there_places_in_hospital, self.minimum_expense)
 
-        for par in contacts:
-            ai = self.population[par[0]]
-            aj = self.population[par[1]]
-            self.contact(ai, aj, triggers=con_triggers)
-            self.contact(aj, ai, triggers=con_triggers)
+    def execute_interactions(self):
+        interactions = list(self.get_interactions())
+        triggers = [k for k in self.triggers_population if k['attribute'] == 'contact']
+        for (ai, aj) in interactions:
+            self.interact(ai, aj, triggers=triggers)
+            self.interact(aj, ai, triggers=triggers)
 
+    def reset_statistics(self):
         self.statistics = None
 
-    def get_positions(self):
-        return [[a.x, a.y] for a in self.population]
+    def execute(self):
+        self.execute_move()
+        self.execute_interactions()
+        self.reset_statistics()
+
+    def _get_agents(self, filter_by):
+        return list(filter(filter_by, self.population))
 
     def get_statistics(self, kind='info'):
         if self.statistics is None:
             self.statistics = {}
             for status in Status:
-                self.statistics[status.name] = np.sum(
-                    [1 for a in self.population if a.status == status]) / self.population_size
+                such_agents = self._get_agents(lambda x: x.status == status)
+                self.statistics[status.name] = len(such_agents) / self.population_size  # ratio
 
             for infected_status in InfectionSeverity:
-                self.statistics[infected_status.name] = np.sum([1 for a in self.population if
-                                                                a.infected_status == infected_status and a.status != Status.Death]) / self.population_size
+                such_agents = self._get_agents(lambda x: x.infected_status == infected_status and x.is_alive())
+                self.statistics[infected_status.name] = len(such_agents) / self.population_size  # ratio
 
-            for quintil in [0, 1, 2, 3, 4]:
-                self.statistics['Q{}'.format(quintil + 1)] = np.sum(
-                    [a.wealth for a in self.population if a.social_stratum == quintil \
-                     and a.age >= 18 and a.status != Status.Death])
+            for q in range(N_QUINTILS):
+                such_agents = self._get_agents(lambda x: x.social_stratum == q and x.is_adult() and x.is_alive())
+                wealth = sum([a.wealth for a in such_agents])
+                self.statistics['Q{}'.format(q + 1)] = wealth
 
-        return self.filter_stats(kind)
+        return self.get_stats(kind)
 
-    def filter_stats(self, kind):
+    def get_virus_stats(self):
+        return {k: v for k, v in self.statistics.items() if not k.startswith('Q')}
+
+    def get_wealth_stats(self):
+        return {k: v for k, v in self.statistics.items() if k.startswith('Q')}
+
+    def get_stats(self, kind):
         if kind == 'info':
-            return {k: v for k, v in self.statistics.items() if not k.startswith('Q')}
+            return self.get_virus_stats()
         elif kind == 'ecom':
-            return {k: v for k, v in self.statistics.items() if k.startswith('Q')}
-        else:
-            return self.statistics
+            return self.get_wealth_stats()
+
+        return self.statistics
